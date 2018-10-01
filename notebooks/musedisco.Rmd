@@ -1,0 +1,328 @@
+
+Load the required R libraries for the analysis.
+
+```{r}
+library(spotifyr)
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(ggthemes)
+
+SPOTIFY_CLIENT_ID <- "9d1505c07126495d8e46929d348a206d"
+SPOTIFY_CLIENT_SECRET <- "bee515cdfa43422d9c5e07448b6a85a0"
+
+Sys.setenv(SPOTIFY_CLIENT_ID = '9d1505c07126495d8e46929d348a206d')
+Sys.setenv(SPOTIFY_CLIENT_SECRET = 'bee515cdfa43422d9c5e07448b6a85a0')
+
+access_token <- get_spotify_access_token()
+
+```
+
+
+Load in the artist to explore and set the artist features as the spotify dataframe.
+
+```{r}
+spotify_df <- get_artist_audio_features("Muse")
+```
+
+EDA Section:
+
+Get a summary of the dataframe for an overview of the features we can explore.
+
+```{r}
+summary(spotify_df)
+```
+
+Plot a simple bar chart to test how the data will be displayed. Here we are looking at the key that songs are most frequently in.
+
+```{r}
+ggplot(spotify_df, aes(x=key, fill=factor(key))) +
+  geom_bar() +
+  theme_bw() +
+  labs(x='Key',y='Count',fill='Key')
+```
+
+Order the plot to make it clearer
+```{r}
+keys <- spotify_df %>% group_by(key) %>% summarise(number=length(key))
+
+keys$key <- factor(keys$key, levels=keys$key[order(-keys$number)] )
+
+ggplot(keys, aes(x=key, y=number, stat="identity")) +
+  geom_bar(stat="identity", aes(fill=factor(key))) +
+  theme_bw() +
+  labs(x='Key',y='Count',fill='Key')
+
+rm(keys)
+```
+
+Remove live albums as not as they will not be reflective of the true song.
+
+```{r}
+spotify_df <- filter(spotify_df, album_name != 'HAARP (Live From Wembley Stadium)' & album_name != 'Hullabaloo Soundtrack' & album_name != 'Live At Rome Olympic Stadium')
+```
+
+
+
+Run a loop to find out what the most energetic songs are on each of Muse's albums.
+```{r}
+energy_album <- function(spotify_df){
+  album_list <- unique(spotify_df$album_name)
+  for (i in seq_along(album_list)){
+    plot <- ggplot(subset(spotify_df, spotify_df$album_name==album_list[i]), aes(x=factor(track_name, levels=track_name), y=energy, fill=factor(track_name, levels=track_name))) + 
+      geom_bar(stat = "identity") +
+      ylim(0, 1) +
+      theme_bw() +
+      labs(x='Song',y='Energy',fill='Song',title='Most Energetic Muse Songs by Album' ,subtitle=album_list[i]) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+      
+    print(plot)
+  }
+}
+
+energy_album(spotify_df)
+```
+
+
+Run a loop to find out what the most danceable songs are on each of Muse's albums.
+```{r}
+dance_album <- function(spotify_df){
+  album_list <- unique(spotify_df$album_name)
+  for (i in seq_along(album_list)){
+    plot <- ggplot(subset(spotify_df, spotify_df$album_name==album_list[i]), aes(x=factor(track_name, levels=track_name), y=danceability, fill=factor(track_name,levels=track_name))) + 
+      geom_bar(stat = "identity") +
+      ylim(0, 1) +
+      theme_bw() +
+      labs(x='Song',y='Danceability',fill='Song',title='Most Danceable Muse Songs by Album' ,subtitle=album_list[i]) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+      
+    print(plot)
+  }
+}
+
+dance_album(spotify_df)
+```
+
+
+Run a loop to find out what the most Live sounding songs are on each of Muse's albums.
+```{r}
+live_album <- function(spotify_df){
+  album_list <- unique(spotify_df$album_name)
+  for (i in seq_along(album_list)){
+    plot <- ggplot(subset(spotify_df, spotify_df$album_name==album_list[i]), aes(x=factor(track_name, levels=track_name), y=liveness, fill=factor(track_name, levels=track_name))) + 
+      geom_bar(stat = "identity") +
+      ylim(0, 1) +
+      theme_bw() +
+      labs(x='Song',y='Liveness',fill='Song',title='Most Live Sounding Muse Songs by Album' ,subtitle=album_list[i]) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+      
+    print(plot)
+  }
+}
+
+live_album(spotify_df)
+```
+
+Run a loop to find out what the happiest sounding song is on each of Muse's albums.
+```{r}
+valence_album <- function(spotify_df){
+  album_list <- unique(spotify_df$album_name)
+  for (i in seq_along(album_list)){
+    plot <- ggplot(subset(spotify_df, spotify_df$album_name==album_list[i]), aes(x=factor(track_name, levels=track_name), y=valence, fill=factor(track_name, levels=track_name))) + 
+      geom_bar(stat = "identity") +
+      ylim(0, 1) +
+      theme_bw() +
+      labs(x='Song',y='Valence',fill='Song',title='Happiest Sounding Muse Songs by Album' ,subtitle=album_list[i]) +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+      theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+      
+    print(plot)
+  }
+}
+
+valence_album(spotify_df)
+```
+
+Which album is the happiest sounding? Have Muse albums become happier in more recent years?
+
+It will be interesting to include live albums in this.
+
+Group songs by album and find the mean valence.
+
+```{r}
+spotify_df <- get_artist_audio_features("Muse")
+
+valence <- spotify_df %>% group_by(album_name) %>% summarise(valence=mean(valence))
+
+valence$order <- c(4,5,10,6,3,9,2,1,8,7)
+
+valence <- valence[order(valence$order),]
+
+head(valence)
+```
+
+then plot
+```{r}
+ggplot(valence, aes(x=factor(album_name, levels=album_name), y=valence, fill=factor(album_name, levels=album_name))) +
+  geom_bar(stat="identity") +
+  theme_bw() +
+  labs(x='Album',y='Mean Valence',fill='',title='How Happy is Each Muse Album?') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+Do the same for energy, what is the most energetic Muse album?
+
+```{r}
+energy <- spotify_df %>% group_by(album_name) %>% summarise(energy=mean(energy))
+
+energy$order <- c(4,5,10,6,3,9,2,1,8,7)
+
+energy <- energy[order(energy$order),]
+
+head(energy)
+```
+
+
+```{r}
+ggplot(energy, aes(x=factor(album_name, levels=album_name), y=energy, fill=factor(album_name, levels=album_name))) +
+  geom_bar(stat="identity") +
+  theme_bw() +
+  labs(x='Album',y='Mean Energy',fill='',title='How Energetic is Each Muse Album?') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+track_popularity <- spotify_df %>% group_by(album_name) %>% summarise(track_popularity=mean(track_popularity))
+
+track_popularity$order <- c(4,5,10,6,3,9,2,1,8,7)
+
+track_popularity <- track_popularity[order(track_popularity$order),]
+
+track_popularity <- track_popularity[-c(10),]
+
+head(track_popularity)
+```
+
+Now lets look at overall popularity for each Muse album.
+
+```{r}
+ggplot(track_popularity, aes(x=factor(album_name, levels=album_name), y=track_popularity, fill=factor(album_name, levels=album_name))) +
+  geom_bar(stat="identity") +
+  labs(x="Album",y="Average Track Popularity",fill="Album",title="How popular is each Muse album on spotify?") +
+  ylim(0,100) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+
+Let's look at individual songs now. We'll look at the top 10 tracks for a few different categories.
+
+```{r}
+popular_10 <- spotify_df %>% 
+  arrange(desc(track_popularity)) %>% 
+  select(track_name, track_popularity) %>% 
+  slice(1:10)
+
+head(popular_10)
+
+ggplot(popular_10, aes(x=factor(track_name, levels=track_name), y=track_popularity, fill=factor(track_name, levels=track_name))) + 
+  geom_bar(stat="identity") +
+  labs(title="Top 10 most popular Muse tracks on Spotify", x="Track Name", y="Popularity", fill="Tracks") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+longest_10 <- spotify_df %>%
+  mutate(duration_min=round(duration_ms/60000, digits=2)) %>%
+  arrange(desc(duration_ms)) %>%
+  select(track_name, duration_min) %>%
+  slice(1:10)
+
+ggplot(longest_10, aes(x=factor(track_name, levels=track_name), y=duration_min, fill=factor(track_name, levels=track_name))) + 
+  geom_bar(stat="identity") +
+  labs(title="Top 10 longest Muse tracks on Spotify", x="Track Name", y="Length (min)", fill="Tracks") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+# Valence - Top 10 songs
+valence_10 <- spotify_df %>%
+  arrange(desc(valence)) %>%
+  select(track_name, valence) %>%
+  slice(1:10)
+
+ggplot(valence_10, aes(x=factor(track_name, levels=track_name), y=valence, fill=factor(track_name, levels=track_name))) + 
+  geom_bar(stat="identity") +
+  labs(title="Top 10 most positive Muse tracks on Spotify", x="Track Name", y="Valence", fill="Tracks") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+
+```{r}
+# Danceability - Top 10 songs
+danceability_10 <- spotify_df %>%
+  arrange(desc(danceability)) %>%
+  select(track_name, danceability) %>%
+  slice(1:10)
+
+ggplot(danceability_10, aes(x=factor(track_name, levels=track_name), y=danceability, fill=factor(track_name, levels=track_name))) + 
+  geom_bar(stat="identity") +
+  labs(title="Top 10 Muse tracks most suitable for dancing on Spotify", x="Track Name", y="Danceability", fill="Tracks") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+# Energy - Top 10 songs
+energy_10 <- spotify_df %>%
+  arrange(desc(energy)) %>%
+  select(track_name, energy) %>%
+  slice(1:10)
+
+ggplot(energy_10, aes(x=factor(track_name, levels=track_name), y=energy, fill=factor(track_name, levels=track_name))) + 
+  geom_bar(stat="identity") +
+  labs(title="Top 10 most energetic Muse tracks on Spotify", x="Track Name", y="Energy", fill="Tracks") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
