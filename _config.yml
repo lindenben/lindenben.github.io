@@ -24,7 +24,7 @@ location: London
 
 # Build settings
 markdown: kramdown
-theme: minima
+theme: jekyll-theme-primer
 plugins:
   - jekyll-feed
 
