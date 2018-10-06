@@ -25,6 +25,7 @@ location: London
 # Build settings
 markdown: kramdown
 theme: jekyll-theme-primer
+
 plugins:
   - jekyll-feed
 
